@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -80,7 +79,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+		backgroundColor.Printf("Using config file: %s\n", viper.ConfigFileUsed())
 	}
 
 	color.NoColor = viper.GetBool("general.no-color")

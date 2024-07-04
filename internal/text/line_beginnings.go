@@ -1,15 +1,28 @@
 package text
 
 type LineBeginnings struct {
-	lineBeginnings []int
+	data []int
 }
 
 func NewLineBeginningsFromArray(lineBeginnings []int) LineBeginnings {
 	return LineBeginnings{
-		lineBeginnings: lineBeginnings,
+		data: lineBeginnings,
 	}
 }
 
 func (l *LineBeginnings) LookupLine(pos int) int {
-	return 0
+	low := 0
+	high := len(l.data) - 1
+	for low <= high {
+		mid := low + (high-low)/2
+		if l.data[mid] == pos {
+			return mid + 1
+		}
+		if pos > l.data[mid] {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+	return low
 }

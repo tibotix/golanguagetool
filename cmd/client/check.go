@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode/utf8"
 
@@ -25,6 +26,7 @@ to quickly create a Cobra application.`,
 }
 
 func run(cmd *cobra.Command, args []string) {
+	// TODO: support reading from stdin
 	if len(args) == 0 {
 		cobra.CheckErr("No input")
 	}
@@ -50,13 +52,14 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	printOptions := PrintOptions{
+		ShowLineNumbers:    !viper.GetBool("check.hide-line-numbers"),
 		ExplainRule:        viper.GetBool("check.explain-rule"),
 		ShowRules:          viper.GetBool("check.rules"),
 		ShowRuleCategories: viper.GetBool("check.rule-categories"),
 	}
 
 	for _, file := range args {
-		data, err := client.OpenFile(file)
+		data, err := os.ReadFile(file)
 		cobra.CheckErr(err)
 
 		fileType := golanguagetool.DetermineFileType(file)
@@ -79,7 +82,7 @@ func run(cmd *cobra.Command, args []string) {
 }
 
 type PrintOptions struct {
-	// showLineNumbers    bool
+	ShowLineNumbers    bool
 	ExplainRule        bool
 	ShowRules          bool
 	ShowRuleCategories bool
@@ -118,8 +121,11 @@ func PrintCheckResults(results *golanguagetool.CheckResults, options *PrintOptio
 		length := codeUnitToByteIndex(contextText[offset:], int(*match.Context.Length))
 		endpos := offset + length
 		padding := runewidth.StringWidth(contextText[:offset])
-		fmt.Printf("%+v,%+v,%+v,%+v,%+v\n", contextText, offset, length, *match.Context.Offset, *match.Context.Length)
+		// fmt.Printf("%+v,%+v,%+v,%+v,%+v\n", contextText, offset, length, *match.Context.Offset, *match.Context.Length)
 
+		if options.ShowLineNumbers {
+			fmt.Printf("Line %d: ", match.LineNumber)
+		}
 		fmt.Printf("%s\n", *match.Message)
 		fmt.Printf("  %s %s%s%s\n", cross, backgroundText(contextText[:offset]), redText(contextText[offset:endpos]), backgroundText(contextText[endpos:]))
 		fmt.Printf("    %s%s\n", strings.Repeat(" ", padding), redText(strings.Repeat("^", int(*match.Context.Length))))
@@ -179,6 +185,8 @@ func init() {
 	viper.BindPFlag("check.rules", checkCmd.Flags().Lookup("rules"))
 	checkCmd.Flags().Bool("rule-categories", false, "Show the categories of matching rules.")
 	viper.BindPFlag("check.rule-categories", checkCmd.Flags().Lookup("rule-categories"))
+	checkCmd.Flags().Bool("hide-line-numbers", false, "Hide line numbers of matches.")
+	viper.BindPFlag("check.hide-line-numbers", checkCmd.Flags().Lookup("hide-line-numbers"))
 
 	allowedFileTypes := append(golanguagetool.SupportedFileTypes, "auto")
 	checkCmd.Flags().VarP(newEnum(allowedFileTypes, "auto"), "input-type", "t", fmt.Sprintf("Input text type. Use `auto` to detect it based on file extension. Available are {%s}", strings.Join(allowedFileTypes, ",")))

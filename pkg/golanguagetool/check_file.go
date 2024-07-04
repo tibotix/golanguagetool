@@ -2,7 +2,6 @@ package golanguagetool
 
 import (
 	"errors"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -11,17 +10,22 @@ import (
 	"github.com/go-openapi/strfmt"
 	text_processing "github.com/tibotix/golanguagetool/internal/text"
 	"github.com/tibotix/golanguagetool/pkg/api/operations"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
-// type Match struct {
-// }
+type Match struct {
+	*operations.PostCheckOKBodyMatchesItems0
+	LineNumber int
+}
 
-//	type CheckResults struct {
-//		checkedLanguageCode  string
-//		detectedLanguageCode string
-//		matches              []Match
-//	}
-type CheckResults operations.PostCheckOKBody
+type CheckResults struct {
+	Language *operations.PostCheckOKBodyLanguage
+	Matches  []*Match
+	Software *operations.PostCheckOKBodySoftware
+}
+
+// type CheckResults operations.PostCheckOKBody
 
 type CheckLevel int
 
@@ -136,24 +140,23 @@ type Text struct {
 	FileType FileType
 }
 
-func (client *Client) OpenFile(file string) ([]byte, error) {
-	data, err := os.ReadFile(file)
+func (client *Client) transformToUTF8(data []byte) ([]byte, error) {
+	transformer := unicode.BOMOverride(unicode.UTF8.NewDecoder())
+	data, _, err := transform.Bytes(transformer, data)
 	if err != nil {
 		return nil, err
 	}
-	// transformer := unicode.BOMOverride(unicode.UTF8.NewDecoder())
-	// data, _, err = transform.Bytes(transformer, data)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return data, nil
-	// unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
 
 }
 
 func (client *Client) CheckText(t Text, options *CheckOptions) (*CheckResults, error) {
+	contents, err := client.transformToUTF8(t.Contents)
+	if err != nil {
+		return nil, err
+	}
 	// If file is empty, early return with no results
-	if len(t.Contents) == 0 {
+	if len(contents) == 0 {
 		return &CheckResults{}, nil
 	}
 
@@ -161,17 +164,14 @@ func (client *Client) CheckText(t Text, options *CheckOptions) (*CheckResults, e
 		options = &defaultCheckOptions
 	}
 
-	// fmt.Println(string(t.Contents[:]))
 	desc, ok := fileTypeMappings[t.FileType]
 	if !ok {
 		return nil, errors.New("unknown file type")
 	}
-	result, err := desc.textTransformer(t.Contents)
+	result, err := desc.textTransformer(contents)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println()
-	// fmt.Println(string(result.data[:]))
 	data_str := ByteArrayToString(result.Data)
 
 	dicts := strings.Join(options.Dicts, ",")
@@ -203,6 +203,18 @@ func (client *Client) CheckText(t Text, options *CheckOptions) (*CheckResults, e
 		return nil, err
 	}
 
-	// fmt.Printf("%+v\n", resp)
-	return (*CheckResults)(resp.Payload), nil
+	matches := make([]*Match, len(resp.Payload.Matches))
+	for i, m := range resp.Payload.Matches {
+		matches[i] = &Match{
+			PostCheckOKBodyMatchesItems0: m,
+			LineNumber:                   result.LineBeginnings.LookupLine(int(*m.Offset)),
+		}
+	}
+
+	checkResult := &CheckResults{
+		Language: resp.Payload.Language,
+		Matches:  matches,
+		Software: resp.Payload.Software,
+	}
+	return checkResult, nil
 }

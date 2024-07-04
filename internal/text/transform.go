@@ -1,7 +1,6 @@
 package text
 
 import (
-	"fmt"
 	"unicode"
 
 	tp "github.com/tibotix/golanguagetool/internal/text_processor"
@@ -16,6 +15,8 @@ func incrementRuneCountBy(n int) tp.BandActions[*tp.ThreeTP[int, int]] {
 var incrementRuneCount = incrementRuneCountBy(1)
 
 func addLineBeginning(t *tp.ThreeTP[int, int]) {
+	// TODO: maybe change to concept of lineBreaks instead of lineBeginnings
+	// then there is no need to include initial 0, and it becomes more intuitive
 	t.Band3.Write(t.Band2.Peek())
 }
 
@@ -53,8 +54,7 @@ func allReplaceTransition(targetState int) tp.Transition[*tp.ThreeTP[int, int]] 
 	return *tp.NewTransition[*tp.ThreeTP[int, int]]().
 		WithPredicate(tp.ConsumingPredicate(tp.PredicateTrue, 1)).
 		WithTargetState(targetState).
-		WithOutput(tp.OutputNothing).
-		WithBandActions(incrementRuneCount)
+		WithOutput(tp.OutputNothing)
 }
 
 func filterTransition(targetState int) tp.Transition[*tp.ThreeTP[int, int]] {
@@ -108,10 +108,12 @@ func TransformTextPlain(text []byte) (*TransformResult, error) {
 }
 
 func transformText(text []byte, transitions [][]tp.Transition[*tp.ThreeTP[int, int]]) (*TransformResult, error) {
+	lineNumbersBand := tp.NewBandWithCapacity[int](50)
+	lineNumbersBand.Write(0) // Write initial lineBeginning
 	tm := tp.ThreeTP[int, int]{
 		TextProcessor: *tp.NewTextProcessorWithTransitions(text, transitions),
 		Band2:         tp.NewBandWithCapacity[int](1),
-		Band3:         tp.NewBandWithCapacity[int](50),
+		Band3:         lineNumbersBand,
 	}
 
 	err := tm.Run()
@@ -119,7 +121,6 @@ func transformText(text []byte, transitions [][]tp.Transition[*tp.ThreeTP[int, i
 		return nil, err
 	}
 
-	fmt.Printf("LineBreaks: %v\n", tm.Band3.AllWritten())
 	return &TransformResult{
 		Data:           tm.InputBand.AllWritten(),
 		LineBeginnings: NewLineBeginningsFromArray(tm.Band3.AllWritten()),
