@@ -10,15 +10,11 @@ type ITP interface {
 	Run() error
 }
 
-// This is an LBA (Linear-Bounded-Automaton).
-// It is a normed TextProcessor M(Q,Σ,Γ,Δ,s,F).
-// This LBA does only allow Instructions, which move the head to the right.
-// It stops when it reaches the end of the input.
-// Additionally it has two head pointers for one band, namely readHead and writeHead.
-// Σ = [255]
-// Γ = [INT_MAX] ∪ {□}
-// s = 0
-// For simplicity and performance reasons, the Predicates however receive a full rune as input.
+// This is a variant of an LBA (Linear-Bounded-Automaton).
+// Notable changes are:
+// Each Band has a separate read/write head.
+// The read/write head of the input band can only move forward or stay in place.
+// It automatically stops when the read head on the input band reaches the end of the input.
 type TextProcessor[T ITP] struct {
 	currentState int
 	InputBand    Band[byte]

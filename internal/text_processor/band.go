@@ -110,7 +110,3 @@ func (b *Band[E]) AllRead() []E {
 	return b.data[:b.readHead]
 
 }
-
-// func (b *Band[E]) UnderlyingData() []E {
-// 	return b.data
-// }

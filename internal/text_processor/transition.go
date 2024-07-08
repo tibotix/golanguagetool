@@ -1,5 +1,12 @@
 package text_processor
 
+// For every step, the TP does the following for every transition
+// in the current state:
+// 1. if the predicate returns true, this transition is taken and it resumes with step 2.
+// 2. if the predicate was a ConsumingPredicate, the read head of the input band is advanced the contextSize of the predicate
+// 3. if the predicate was a NonConsumingPredicate, the read head of the input band stays in place.
+// 4. the result of output, which receives the same arguments as predicate, is written to the input band.
+// 5. the band actions are executed, enabling the possibility for customized band manipulations.
 type Transition[T ITP] struct {
 	predicate   Predicate
 	targetState int
@@ -7,6 +14,7 @@ type Transition[T ITP] struct {
 	bandActions BandActions[T]
 }
 
+// Creates a new Transition with default values
 func NewTransition[T ITP]() *Transition[T] {
 	return &Transition[T]{
 		predicate:   ConsumingPredicateTrue,
