@@ -3,7 +3,7 @@ on:
     branches:
       - master
     tags:
-      - ^v\d+?\.\d+?\.\d+?$ # v*.*.*
+      - '^v\d+?\.\d+?\.\d+?$' # v*.*.*
 
 permissions:
   contents: write
